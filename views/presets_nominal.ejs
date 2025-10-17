@@ -1,0 +1,110 @@
+<section class="card">
+  <div class="list-header">
+    <h2>Kelola Nominal Preset</h2>
+  </div>
+  <p style="color:#6b7280;">Preset akan muncul sebagai pilihan cepat di form transaksi. Admin dapat menambah, mengubah, atau menonaktifkan.</p>
+
+  <h3>Tambah Preset</h3>
+  <form method="POST" action="/transaksi/presets/new" class="form-inline">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Tipe
+      <select name="tipe" required>
+        <option value="setor">Setoran</option>
+        <option value="tarik">Penarikan</option>
+      </select>
+    </label>
+    <label>Nominal
+      <input type="number" name="amount" min="1" required placeholder="contoh: 10000" />
+    </label>
+    <label>Label (opsional)
+      <input type="text" name="label" placeholder="contoh: 10 rb" />
+    </label>
+    <label>Urutan
+      <input type="number" name="sort_order" min="0" value="0" />
+    </label>
+    <label>
+      <input type="checkbox" name="active" checked /> Aktif
+    </label>
+    <button type="submit" class="btn-primary">Tambah</button>
+  </form>
+</section>
+
+<section class="card">
+  <h3>Preset Setoran</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Urutan</th>
+        <th>Nominal</th>
+        <th>Label</th>
+        <th>Aktif</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (presetsSetor && presetsSetor.length) { %>
+        <% presetsSetor.forEach(p => { %>
+          <tr>
+            <td><input type="number" name="sort_order" value="<%= p.sort_order || 0 %>" style="width:90px" form="formEditSetor_<%= p.id %>" /></td>
+            <td><input type="number" name="amount" value="<%= p.amount %>" style="width:130px" form="formEditSetor_<%= p.id %>" /></td>
+            <td><input type="text" name="label" value="<%= p.label || '' %>" form="formEditSetor_<%= p.id %>" /></td>
+            <td><input type="checkbox" name="active" <%= p.active ? 'checked' : '' %> form="formEditSetor_<%= p.id %>" /></td>
+            <td>
+              <form id="formEditSetor_<%= p.id %>" method="POST" action="/transaksi/presets/<%= p.id %>/edit" class="form-inline" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="tipe" value="setor" />
+                <button type="submit" class="btn">Simpan</button>
+              </form>
+              <form method="POST" action="/transaksi/presets/<%= p.id %>/delete" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn-danger" onclick="return confirm('Hapus preset ini?')">Hapus</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5" class="text-center">Belum ada preset.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card">
+  <h3>Preset Penarikan</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Urutan</th>
+        <th>Nominal</th>
+        <th>Label</th>
+        <th>Aktif</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (presetsTarik && presetsTarik.length) { %>
+        <% presetsTarik.forEach(p => { %>
+          <tr>
+            <td><input type="number" name="sort_order" value="<%= p.sort_order || 0 %>" style="width:90px" form="formEditTarik_<%= p.id %>" /></td>
+            <td><input type="number" name="amount" value="<%= p.amount %>" style="width:130px" form="formEditTarik_<%= p.id %>" /></td>
+            <td><input type="text" name="label" value="<%= p.label || '' %>" form="formEditTarik_<%= p.id %>" /></td>
+            <td><input type="checkbox" name="active" <%= p.active ? 'checked' : '' %> form="formEditTarik_<%= p.id %>" /></td>
+            <td>
+              <form id="formEditTarik_<%= p.id %>" method="POST" action="/transaksi/presets/<%= p.id %>/edit" class="form-inline" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <input type="hidden" name="tipe" value="tarik" />
+                <button type="submit" class="btn">Simpan</button>
+              </form>
+              <form method="POST" action="/transaksi/presets/<%= p.id %>/delete" style="display:inline;">
+                <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                <button type="submit" class="btn-danger" onclick="return confirm('Hapus preset ini?')">Hapus</button>
+              </form>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5" class="text-center">Belum ada preset.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>

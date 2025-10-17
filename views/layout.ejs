@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title><%= title || 'Tabungan Santri' %></title>
+  <script>
+    (function(){
+      try{
+        var saved = localStorage.getItem('theme');
+        var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        var theme = saved ? saved : (prefersDark ? 'dark' : 'light');
+        if (theme === 'dark') { document.documentElement.setAttribute('data-theme','dark'); }
+      }catch(e){ /* ignore */ }
+    })();
+  </script>
+  <link rel="stylesheet" href="/public/css/styles.css" />
+  </head>
+<body>
+  <header class="app-header">
+    <div class="container header-inner">
+      <div class="brand-wrap">
+        <a class="site-logo" href="/" aria-label="ZM MART">
+          <img src="/public/img/zmmart-logo.svg" alt="ZM MART" />
+        </a>
+        <h1 class="brand">Tabungan Santri</h1>
+      </div>
+      <div class="header-actions">
+        <button class="nav-toggle" aria-label="Buka menu">☰</button>
+        <button class="theme-toggle" aria-label="Ganti tema">🌙</button>
+        <button class="fullscreen-toggle" aria-label="Layar penuh" title="Layar Penuh">⛶</button>
+        <% if (user) { %>
+          <a href="#" class="btn header-back" title="Kembali">← Kembali</a>
+        <% } %>
+         <% if (user) { %>
+           <a href="<%= (user.role === 'admin' ? '/dashboard/admin' : '/dashboard/kasir') %>" class="btn header-dashboard" title="Dashboard">🏠 Dashboard</a>
+         <% } %>
+        <% if (user) { %>
+          <a href="/logout" class="btn-danger header-logout">Logout</a>
+        <% } %>
+      </div>
+      <nav>
+        <% if (user) { %>
+          <% if (user.role === 'admin') { %>
+            <a href="/santri" class="<%= currentPath && currentPath.startsWith('/santri') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/santri') ? 'aria-current="page"' : '' %>>Santri</a>
+            <a href="/laporan" class="<%= currentPath && currentPath.startsWith('/laporan') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/laporan') ? 'aria-current="page"' : '' %>>Laporan</a>
+            <a href="/transaksi/presets" class="<%= currentPath && currentPath.startsWith('/transaksi/presets') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/transaksi/presets') ? 'aria-current="page"' : '' %>>Presets</a>
+            <a href="/users" class="<%= currentPath && currentPath.startsWith('/users') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/users') ? 'aria-current="page"' : '' %>>Users</a>
+          <% } else { %>
+            <a href="/transaksi/setor" class="<%= currentPath && currentPath.startsWith('/transaksi/setor') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/transaksi/setor') ? 'aria-current="page"' : '' %>>Setoran</a>
+            <a href="/transaksi/tarik" class="<%= currentPath && currentPath.startsWith('/transaksi/tarik') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/transaksi/tarik') ? 'aria-current="page"' : '' %>>Penarikan</a>
+          <% } %>
+          <a href="/account" class="<%= currentPath && currentPath.startsWith('/account') ? 'active' : '' %>" <%= currentPath && currentPath.startsWith('/account') ? 'aria-current="page"' : '' %>>Akun</a>
+          <span class="user-info">👤 <%= user.full_name %> (<%= user.role %>)</span>
+        <% } else { %>
+          <a href="/login">Login</a>
+        <% } %>
+      </nav>
+    </div>
+  </header>
+  <main class="container">
+    <%- include('partials/flash') %>
+    <%- body %>
+  </main>
+  <footer class="app-footer container">
+    <small>&copy; <%= new Date().getFullYear() %> Tabungan Santri</small>
+  </footer>
+  <script>window.__CSRF__ = '<%= csrfToken %>';</script>
+  <script>
+    (function(){
+      const toggle = document.querySelector('.nav-toggle');
+      const nav = document.querySelector('.app-header nav');
+      const themeToggle = document.querySelector('.theme-toggle');
+      const fullscreenToggle = document.querySelector('.fullscreen-toggle');
+      const backBtn = document.querySelector('.header-back');
+      const root = document.documentElement;
+      function applyTheme(theme){
+        if (theme === 'dark') { root.setAttribute('data-theme','dark'); if (themeToggle) themeToggle.textContent = '☀️'; }
+        else { root.removeAttribute('data-theme'); if (themeToggle) themeToggle.textContent = '🌙'; }
+      }
+      if (toggle && nav) {
+        toggle.addEventListener('click', function(){
+          nav.classList.toggle('open');
+        });
+      }
+      if (themeToggle) {
+        themeToggle.addEventListener('click', function(){
+          const isDark = root.getAttribute('data-theme') === 'dark';
+          const next = isDark ? 'light' : 'dark';
+          try{ localStorage.setItem('theme', next); }catch(e){}
+          applyTheme(next);
+          document.dispatchEvent(new Event('themechange'));
+        });
+        try{
+          const saved = localStorage.getItem('theme');
+          applyTheme(saved === 'dark' ? 'dark' : 'light');
+        }catch(e){ applyTheme('light'); }
+      }
+      function isFullscreen(){
+        return !!(document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement);
+      }
+      function updateFsIcon(){
+        if (!fullscreenToggle) return;
+        fullscreenToggle.textContent = isFullscreen() ? '⤢' : '⛶';
+      }
+      if (fullscreenToggle) {
+        fullscreenToggle.addEventListener('click', function(){
+          try{
+            if (isFullscreen()) {
+              if (document.exitFullscreen) document.exitFullscreen();
+              else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+              else if (document.mozCancelFullScreen) document.mozCancelFullScreen();
+            } else {
+              const el = document.documentElement;
+              if (el.requestFullscreen) el.requestFullscreen();
+              else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+              else if (el.mozRequestFullScreen) el.mozRequestFullScreen();
+            }
+          }catch(e){ /* ignore */ }
+        });
+        document.addEventListener('fullscreenchange', updateFsIcon);
+        updateFsIcon();
+      }
+      if (backBtn) {
+        backBtn.addEventListener('click', function(e){
+          e.preventDefault();
+          try{
+            if (window.history.length > 1) { window.history.back(); return; }
+          }catch(err){}
+          window.location.href = '<%= user ? (user.role === "admin" ? "/dashboard/admin" : "/dashboard/kasir") : "/login" %>';
+        });
+      }
+    })();
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/signature_pad@4.2.0/dist/signature_pad.umd.min.js"></script>
+</body>
+</html>

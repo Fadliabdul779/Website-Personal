@@ -1,0 +1,81 @@
+<div class="page-login">
+  <section class="card login-hero">
+    <div class="hero-brand">
+      <img class="hero-logo" src="/public/img/zmmart-logo.svg" alt="ZM MART" />
+      <div class="hero-text">
+        <div class="hero-title">Tabungan Santri</div>
+        <div class="hero-sub">Kelola setoran dan penarikan dengan cepat dan aman.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="card login-card">
+    <h2>Masuk</h2>
+    <p class="muted" style="margin-top:4px;">Pilih peran untuk masuk sebagai Admin atau Kasir.</p>
+    <% if (typeof dbReady !== 'undefined' && !dbReady) { %>
+      <div class="card info" style="margin-bottom:12px;">
+        <strong>Status:</strong> Database offline. Login dinonaktifkan untuk preview UI.
+        <div class="muted" style="margin-top:6px;">Anda tetap dapat mengirimkan saran/masukan ke admin di bawah.</div>
+      </div>
+    <% } %>
+    <form method="POST" action="/login" class="form-grid login-form">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <label>Username
+        <input type="text" name="username" required <%= dbReady ? '' : 'disabled' %> placeholder="contoh: admin" />
+      </label>
+      <label>Password
+        <div class="input-wrap">
+          <input type="password" name="password" required <%= dbReady ? '' : 'disabled' %> placeholder="password" />
+          <button id="pwToggle" class="pw-toggle" aria-label="Tampilkan/Sembunyikan password" <%= dbReady ? '' : 'disabled' %>>👁️</button>
+        </div>
+      </label>
+      <label>Role
+        <select name="role" required>
+          <option value="admin">Admin</option>
+          <option value="kasir">Kasir/Teler</option>
+        </select>
+      </label>
+      <button type="submit" class="btn-primary btn-block" <%= dbReady ? '' : 'disabled' %>>Masuk</button>
+    </form>
+    <p class="hint">Akun awal: admin/admin123, kasir/kasir123</p>
+    <script>
+      (function(){
+        const pw = document.querySelector('input[name="password"]');
+        const btn = document.getElementById('pwToggle');
+        if (pw && btn) {
+          btn.addEventListener('click', function(e){ e.preventDefault(); pw.type = (pw.type === 'password') ? 'text' : 'password'; });
+        }
+      })();
+    </script>
+  </section>
+
+  <section class="card">
+    <h3>Saran & Masukan</h3>
+    <form method="POST" action="/feedback" class="form-grid" style="margin-top:8px;">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <label>Nama (opsional)
+        <input type="text" name="nama" />
+      </label>
+      <label>Masukan
+        <textarea name="pesan" rows="3" required style="padding:10px 12px; border:1px solid var(--border); border-radius:10px;"></textarea>
+      </label>
+      <button type="submit" class="btn-outline">Kirim Masukan</button>
+    </form>
+  </section>
+
+  <!-- Bagian kontak admin (hanya tampilan, tidak menampilkan arsip) -->
+  <section class="card contact-card">
+    <div class="contact-brand">
+      <div class="brand-logo">ZM</div>
+      <div>
+        <div class="brand-name">ZM Mart</div>
+        <div class="brand-sub">Dukungan & Bantuan</div>
+      </div>
+    </div>
+    <div class="contact-list">
+      <a class="contact-link" href="tel:085711081674" title="Panggil Ustadz Luqman">Ustadz Luqman: 085711081674</a>
+      <a class="contact-link" href="tel:085869230249" title="Panggil Ustadz Fadli">Ustadz Fadli: 085869230249</a>
+    </div>
+    <div class="contact-foot muted">Ustadz Luqman, Ustadz Fadli</div>
+  </section>
+</div>

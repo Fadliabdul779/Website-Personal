@@ -1,0 +1,12 @@
+<section class="card">
+  <h2>Hapus Transaksi</h2>
+  <p>Masukkan nomor TRX lengkap atau 8 digit terakhir (suffix). Contoh: <code>2ec7f54b</code>.</p>
+  <form method="POST" action="/transaksi/hapus" class="form-inline" onsubmit="return confirm('Yakin hapus transaksi ini? Tindakan tidak dapat dibatalkan.')">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Nomor TRX / Suffix
+      <input type="text" name="trx" placeholder="TRX-YYYYMMDD-HHmmss-xxxxxxxx atau xxxxxxxx" required />
+    </label>
+    <button type="submit" class="btn-danger">Hapus</button>
+  </form>
+  <p class="hint">Saldo santri akan otomatis dikembalikan sesuai tipe transaksi.</p>
+</section>

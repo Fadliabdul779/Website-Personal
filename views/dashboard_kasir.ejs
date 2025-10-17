@@ -1,0 +1,211 @@
+<% /* Fallback untuk variabel filter agar tidak ReferenceError saat tidak dikirim dari route */
+   var filterStart = (typeof filterStart !== 'undefined' && filterStart) ? filterStart : '';
+   var filterEnd = (typeof filterEnd !== 'undefined' && filterEnd) ? filterEnd : '';
+%>
+<div class="dashboard-stack">
+
+<section class="card narrow dash-filter">
+  <h3>Filter Tanggal</h3>
+  <form class="form-inline" method="get" action="/dashboard/kasir">
+    <label>
+      Dari
+      <input type="date" name="start" value="<%= filterStart || '' %>">
+    </label>
+    <label>
+      Sampai
+      <input type="date" name="end" value="<%= filterEnd || '' %>">
+    </label>
+    <button class="btn-primary" type="submit">Terapkan</button>
+    <a class="btn" href="/dashboard/kasir">Reset</a>
+  </form>
+  <div class="preset-list">
+    <a class="chip" href="/dashboard/kasir?range=day">Hari Ini</a>
+    <a class="chip" href="/dashboard/kasir?range=week">Minggu Ini</a>
+    <a class="chip" href="/dashboard/kasir?range=month">Bulan Ini</a>
+  </div>
+</section>
+
+<section class="actions card narrow dash-actions">
+  <h3>Aksi Cepat</h3>
+  <div class="action-buttons">
+    <a class="btn-primary" href="/transaksi/setor">💳 Proses Setoran</a>
+    <a class="btn" href="/transaksi/tarik">🧾 Proses Penarikan</a>
+    <a class="btn" href="/feedback">Lihat Arsip Masukan</a>
+  </div>
+</section>
+
+<section class="card narrow dash-transactions">
+  <h3>
+    <% if (filterStart && filterEnd) { %>
+      Transaksi (Rentang: <%= filterStart %> s.d <%= filterEnd %>)
+      <span class="badge" style="margin-left:8px;">Total: <%= (transaksi && transaksi.length) ? transaksi.length : 0 %> trx</span>
+    <% } else { %>
+      Transaksi Hari Ini
+    <% } %>
+  </h3>
+  <table class="table compact">
+    <thead>
+      <tr>
+        <th>Waktu</th>
+        <th>Nomor</th>
+        <th>NIS</th>
+        <th>Nama</th>
+        <th>Tipe</th>
+        <th>Jumlah</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (transaksi && transaksi.length) { %>
+        <% transaksi.forEach(t => { %>
+          <tr>
+            <td><%= new Date(t.created_at).toLocaleString('id-ID') %></td>
+            <td><%= t.trx_no %></td>
+            <td><%= t.nis %></td>
+            <td><%= t.nama %></td>
+            <td>
+              <% if (t.tipe === 'setor') { %>
+                <span class="badge badge-success">Setoran</span>
+              <% } else if (t.tipe === 'tarik') { %>
+                <span class="badge badge-danger">Penarikan</span>
+              <% } else { %>
+                <span class="badge"><%= t.tipe %></span>
+              <% } %>
+            </td>
+            <td>Rp <%= (t.jumlah||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></td>
+            <td>
+              <% if (t.tipe === 'tarik') { %>
+                <a class="btn" href="/transaksi/<%= t.trx_no %>/pdf" target="_blank">PDF</a>
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="7" class="text-center">Belum ada transaksi.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>
+
+<section class="card narrow dash-chart">
+  <h3>Grafik Pemasukan vs Pengeluaran</h3>
+  <canvas id="kasirChart" height="120"></canvas>
+  <p id="kasirChartNote" style="color:#6b7280;font-size:12px;">Rentang default 14 hari terakhir.</p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function(){
+    function getChartColors(){
+      const css = getComputedStyle(document.documentElement);
+      return {
+        grid: (css.getPropertyValue('--chart-grid')||'#e5e7eb').trim(),
+        text: (css.getPropertyValue('--chart-text')||'#374151').trim()
+      };
+    }
+    async function loadChart(){
+      try{
+        const start = "<%= filterStart || '' %>";
+        const end = "<%= filterEnd || '' %>";
+        const query = (start && end) ? `start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}` : (new URLSearchParams(window.location.search).get('range') ? `range=${new URLSearchParams(window.location.search).get('range')}` : 'days=14');
+        const res = await fetch(`/dashboard/api/daily?${query}`);
+        let data;
+        try { data = await res.json(); } catch (_) { data = null; }
+        if (!data || !Array.isArray(data.labels) || !Array.isArray(data.pemasukan) || !Array.isArray(data.pengeluaran)) {
+          console.warn('Statistik harian tidak tersedia untuk chart.');
+          const note = document.getElementById('kasirChartNote');
+          if (note) note.textContent = 'Statistik harian tidak tersedia (DB offline).';
+          return;
+        }
+        const note = document.getElementById('kasirChartNote');
+        if (note) {
+          if (start && end) note.textContent = `Rentang filter ${start} s.d ${end}`;
+          else note.textContent = 'Rentang default 14 hari terakhir.';
+        }
+        const ctx = document.getElementById('kasirChart').getContext('2d');
+        const fmtIDR = (v)=> new Intl.NumberFormat('id-ID').format(v||0);
+        const colors = getChartColors();
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.labels.map(d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID')),
+            datasets: [
+              {
+                label: 'Pemasukan (Setoran)',
+                data: data.pemasukan,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.15)',
+                tension: 0.25,
+                fill: true,
+              },
+              {
+                label: 'Pengeluaran (Penarikan)',
+                data: data.pengeluaran,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239,68,68,0.15)',
+                tension: 0.25,
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.dataset.label}: Rp ${fmtIDR(ctx.parsed.y)}`
+                }
+              },
+              legend: { display: true, labels: { color: colors.text } }
+            },
+            scales: {
+              x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+              y: { ticks: { color: colors.text, callback: (v) => `Rp ${fmtIDR(v)}` }, grid: { color: colors.grid } }
+            }
+          }
+        });
+        window.kasirChart = chart;
+        document.addEventListener('themechange', function(){
+          const c = getChartColors();
+          chart.options.scales.x.ticks.color = c.text;
+          chart.options.scales.x.grid.color = c.grid;
+          chart.options.scales.y.ticks.color = c.text;
+          chart.options.scales.y.grid.color = c.grid;
+          chart.options.plugins.legend.labels.color = c.text;
+          chart.update();
+        });
+      }catch(e){ console.error('chart load error', e); }
+    }
+    loadChart();
+  })();
+</script>
+<section class="card narrow">
+  <% let totalSetoran = 0, totalPenarikan = 0, countSetoran = 0, countPenarikan = 0; 
+     if (transaksi && transaksi.length) { 
+       transaksi.forEach(t => { 
+         if (t.tipe === 'setor') { totalSetoran += (t.jumlah||0); countSetoran++; }
+         else if (t.tipe === 'tarik') { totalPenarikan += (t.jumlah||0); countPenarikan++; }
+       }); 
+     } 
+     function fmtIDR(v){ return (v||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  %>
+  <div class="stat-cards">
+    <div class="stat-card income">
+      <div class="stat-top">
+        <span class="stat-title">Pemasukan Hari Ini</span>
+        <span class="badge badge-success">⬆️ <%= countSetoran %> trx</span>
+      </div>
+      <div class="value">Rp <%= fmtIDR(totalSetoran) %></div>
+      <div class="stat-sub">Dari setoran kasir</div>
+    </div>
+    <div class="stat-card outcome">
+      <div class="stat-top">
+        <span class="stat-title">Pengeluaran Hari Ini</span>
+        <span class="badge">⬇️ <%= countPenarikan %> trx</span>
+      </div>
+      <div class="value">Rp <%= fmtIDR(totalPenarikan) %></div>
+      <div class="stat-sub">Penarikan santri</div>
+    </div>
+  </div>
+</section>

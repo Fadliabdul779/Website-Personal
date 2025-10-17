@@ -1,0 +1,17 @@
+<section class="card">
+  <h2>Pengaturan Akun</h2>
+  <div class="card info">
+    <div><strong>Username:</strong> <%= me.username %></div>
+    <div><strong>Role:</strong> <%= me.role %></div>
+  </div>
+  <form method="POST" action="/account" class="form-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Nama Lengkap
+      <input type="text" name="full_name" value="<%= me.full_name %>" required />
+    </label>
+    <label>Password Baru (opsional)
+      <input type="password" name="password" />
+    </label>
+    <button type="submit" class="btn-primary">Simpan Perubahan</button>
+  </form>
+</section>

@@ -1,0 +1,53 @@
+<section class="card">
+  <h2>Laporan Transaksi</h2>
+  <form method="GET" action="/laporan" class="form-inline">
+    <label>Mulai
+      <input type="date" name="start" value="<%= startDate %>" />
+    </label>
+    <label>Sampai
+      <input type="date" name="end" value="<%= endDate %>" />
+    </label>
+    <button class="btn-primary" type="submit">Terapkan</button>
+    <span style="margin-left:8px;">Cepat: </span>
+    <a class="btn" href="/laporan?range=day">Harian</a>
+    <a class="btn" href="/laporan?range=week">Mingguan</a>
+    <a class="btn" href="/laporan?range=month">Bulanan</a>
+    <a class="btn" href="/laporan/export/csv?start=<%= startDate %>&end=<%= endDate %>">Export CSV</a>
+    <a class="btn" href="/laporan/export/pdf?start=<%= startDate %>&end=<%= endDate %>">Export PDF</a>
+  </form>
+  <div class="card info">
+    <div><strong>Total Setoran:</strong> Rp <%= (totalSetor||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div><strong>Total Penarikan:</strong> Rp <%= (totalTarik||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Tanggal</th>
+        <th>Nomor</th>
+        <th>NIS</th>
+        <th>Nama</th>
+        <th>Tipe</th>
+        <th>Jumlah</th>
+        <th>Kasir</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% rows.forEach(r => { %>
+        <tr>
+          <td><%= new Date(r.created_at).toLocaleString('id-ID') %></td>
+          <td><%= r.trx_no %></td>
+          <td><%= r.nis %></td>
+          <td><%= r.nama %></td>
+          <td><%= r.tipe %></td>
+          <td>Rp <%= (r.jumlah||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></td>
+          <td><%= r.kasir_name || '' %></td>
+          <td><%= r.keterangan || '' %></td>
+        </tr>
+      <% }) %>
+      <% if (!rows.length) { %>
+        <tr><td colspan="8" class="text-center">Tidak ada transaksi pada periode ini.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>

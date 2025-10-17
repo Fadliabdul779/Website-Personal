@@ -1,0 +1,37 @@
+<section class="card">
+  <div class="list-header">
+    <h2>Manajemen Pengguna</h2>
+    <a class="btn-primary" href="/users/new">Tambah Pengguna</a>
+  </div>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Username</th>
+        <th>Nama Lengkap</th>
+        <th>Role</th>
+        <th>Dibuat</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% items.forEach(u => { %>
+        <tr>
+          <td><%= u.username %></td>
+          <td><%= u.full_name %></td>
+          <td><%= u.role %></td>
+          <td><%= new Date(u.created_at).toLocaleString('id-ID') %></td>
+          <td>
+            <a class="btn" href="/users/<%= u.id %>/edit">Edit</a>
+            <form method="POST" action="/users/<%= u.id %>/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn-danger" onclick="return confirm('Hapus pengguna ini?')">Hapus</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!items.length) { %>
+        <tr><td colspan="5" class="text-center">Belum ada pengguna.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>

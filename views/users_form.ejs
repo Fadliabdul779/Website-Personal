@@ -1,0 +1,22 @@
+<section class="card">
+  <h2><%= item ? 'Edit Pengguna' : 'Tambah Pengguna' %></h2>
+  <form method="POST" action="<%= item ? '/users/' + item.id + '/edit' : '/users/new' %>" class="form-grid">
+    <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+    <label>Username
+      <input type="text" name="username" value="<%= item ? item.username : '' %>" required />
+    </label>
+    <label>Nama Lengkap
+      <input type="text" name="full_name" value="<%= item ? item.full_name : '' %>" required />
+    </label>
+    <label>Role
+      <select name="role" required>
+        <option value="admin" <%= item && item.role==='admin' ? 'selected' : '' %>>Admin</option>
+        <option value="kasir" <%= item && item.role==='kasir' ? 'selected' : '' %>>Kasir/Teler</option>
+      </select>
+    </label>
+    <label>Password <%= item ? '(opsional untuk reset)' : '' %>
+      <input type="password" name="password" <%= item ? '' : 'required' %> />
+    </label>
+    <button type="submit" class="btn-primary">Simpan</button>
+  </form>
+</section>

@@ -1,0 +1,49 @@
+<section class="card">
+  <h2>Detail Santri</h2>
+  <div class="form-grid">
+    <div>
+      <% if (santri.foto_path) { %>
+        <img src="/public/<%= santri.foto_path %>" alt="Foto Santri" style="height:120px;width:120px;object-fit:cover;border-radius:8px;border:1px solid #eee;" />
+      <% } %>
+    </div>
+    <div>
+      <div><strong>NIS:</strong> <%= santri.nis %></div>
+      <div><strong>Nama:</strong> <%= santri.nama %></div>
+      <div><strong>Kelas:</strong> <%= santri.kelas || '-' %></div>
+      <div><strong>Kelompok:</strong> <%= santri.kelompok || '-' %></div>
+      <div><strong>Saldo Saat Ini:</strong> Rp <%= (santri.saldo||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h3>Riwayat Transaksi</h3>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Waktu</th>
+        <th>Nomor</th>
+        <th>Tipe</th>
+        <th>Jumlah</th>
+        <th>Kasir</th>
+        <th>Keterangan</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (transaksi && transaksi.length) { %>
+        <% transaksi.forEach(t => { %>
+          <tr>
+            <td><%= new Date(t.created_at).toLocaleString('id-ID') %></td>
+            <td><%= t.trx_no %></td>
+            <td><%= t.tipe %></td>
+            <td>Rp <%= (t.jumlah||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></td>
+            <td><%= t.kasir_name || '' %></td>
+            <td><%= t.keterangan || '' %></td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="6" class="text-center">Belum ada transaksi.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>

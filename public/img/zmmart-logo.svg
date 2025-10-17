@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="160" height="160" viewBox="0 0 160 160" aria-label="ZM MART">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="60%">
+      <stop offset="0%" stop-color="#f7f5ef"/>
+      <stop offset="100%" stop-color="#e9e3d3"/>
+    </radialGradient>
+  </defs>
+  <circle cx="80" cy="80" r="76" fill="url(#bg)" stroke="#c5a96e" stroke-width="4"/>
+  <circle cx="80" cy="80" r="68" fill="none" stroke="#c5a96e" stroke-width="2" opacity="0.6"/>
+  <g font-family="Georgia, 'Times New Roman', serif" text-anchor="middle">
+    <text x="80" y="94" font-size="72" fill="#0f5132" font-weight="700">ZM</text>
+    <text x="80" y="122" font-size="22" fill="#121212" font-weight="700">ZM MART</text>
+  </g>
+</svg>

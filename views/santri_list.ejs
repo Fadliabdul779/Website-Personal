@@ -1,0 +1,138 @@
+<section class="card">
+  <div class="list-header">
+    <h2>Data Santri</h2>
+    <div>
+      <a class="btn" href="/santri/import">Impor dari Excel</a>
+      <a class="btn-primary" href="/santri/new">Tambah Santri</a>
+    </div>
+  </div>
+  <form method="GET" action="/santri" class="form-inline" style="margin-top:8px;">
+    <label>Cari Santri
+      <input type="text" id="inputCariSantri" name="q" value="<%= typeof q !== 'undefined' ? q : '' %>" placeholder="Masukkan nama/NIS/kelas/kelompok" autocomplete="off" list="dlSantri" />
+    </label>
+    <button type="submit" class="btn">Cari</button>
+    <datalist id="dlSantri"></datalist>
+  </form>
+  <div id="quickSuggestSantri" class="card" style="margin-top:8px; display:none;"></div>
+  <table class="table compact">
+    <thead>
+      <tr>
+        <th>NIS</th>
+        <th>Nama</th>
+        <th>Foto</th>
+        <th>Kelas</th>
+        <th>Kelompok</th>
+        <th>Saldo</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% items.forEach(s => { %>
+        <tr>
+          <td><%= s.nis %></td>
+          <td><%= s.nama %></td>
+          <td>
+            <% if (s.foto_path) { %>
+              <img src="/public/<%= s.foto_path %>" alt="Foto" style="height:40px;width:40px;object-fit:cover;border-radius:50%;border:1px solid #eee;" />
+            <% } else { %> - <% } %>
+          </td>
+          <td><%= s.kelas || '-' %></td>
+          <td><%= s.kelompok || '-' %></td>
+          <td>Rp <%= (s.saldo||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></td>
+          <td>
+            <a class="btn" href="/santri/<%= s.id %>">Detail</a>
+            <a class="btn" href="/santri/<%= s.id %>/edit">Edit</a>
+            <form method="POST" action="/santri/<%= s.id %>/delete" style="display:inline">
+              <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+              <button type="submit" class="btn-danger" onclick="return confirm('Hapus santri ini?')">Hapus</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (!items.length) { %>
+        <tr><td colspan="6" class="text-center">Belum ada data.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+
+  <script>
+    (function(){
+      const input = document.getElementById('inputCariSantri');
+      const dl = document.getElementById('dlSantri');
+      const box = document.getElementById('quickSuggestSantri');
+      function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const args = arguments; t=setTimeout(()=>fn.apply(this, args), ms); }; }
+      function escapeHtml(s){return String(s||'').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+      function highlight(text, q){
+        text = String(text||''); if (!q) return escapeHtml(text);
+        try { const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+          const idx = text.search(re);
+          if (idx === -1) return escapeHtml(text);
+          const start = escapeHtml(text.slice(0, idx));
+          const match = escapeHtml(text.slice(idx, idx + q.length));
+          const end = escapeHtml(text.slice(idx + q.length));
+          return `${start}<span class="highlight">${match}</span>${end}`;
+        } catch { return escapeHtml(text); }
+      }
+      function initials(name){
+        const parts = String(name||'').trim().split(/\s+/);
+        if (!parts.length) return '?';
+        if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+        return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+      }
+      let selectedIdx = -1; let currentData = [];
+      async function fetchSuggest(q){
+        if (!q || q.length < 2) { box.style.display='none'; box.innerHTML=''; dl.innerHTML=''; return; }
+        try {
+          const res = await fetch('/santri/search?q=' + encodeURIComponent(q));
+          const data = await res.json();
+          currentData = data; selectedIdx = -1;
+          dl.innerHTML = data.map(d => `<option value="${escapeHtml(d.nama)}"></option>`).join('');
+          if (!data.length) { box.style.display='none'; box.innerHTML=''; return; }
+          const cards = data.map((d, i) => {
+            const hasFoto = !!d.foto_path;
+            const namaHtml = highlight(d.nama, q);
+            const meta = `${escapeHtml(d.nis)} • ${escapeHtml(d.kelas||'-')} • ${escapeHtml(d.kelompok||'-')} • Rp ${(d.saldo||0).toString().replace(/\\B(?=(\\d{3})+(?!\\d))/g, '.')}`;
+            const avatar = hasFoto
+              ? `<img class="suggest-avatar" src="/public/${escapeHtml(d.foto_path)}" alt="foto" onerror="this.style.display='none'" />`
+              : `<div class="initial-avatar">${initials(d.nama)}</div>`;
+            return `
+              <div class="suggest-card" data-idx="${i}">
+                ${avatar}
+                <div>
+                  <div class="suggest-title">${namaHtml}</div>
+                  <div class="suggest-meta">${meta}</div>
+                </div>
+                <div class="suggest-actions">
+                  <a class="btn" href="/santri/${d.id}">Detail</a>
+                  <a class="btn" href="/santri/${d.id}/edit">Edit</a>
+                </div>
+              </div>
+            `;
+          }).join('');
+          box.innerHTML = `<h3>Hasil Cepat</h3><div class="suggest-grid">${cards}</div>`;
+          box.style.display = 'block';
+          box.querySelectorAll('.suggest-card').forEach((el) => {
+            el.addEventListener('click', () => {
+              const idx = parseInt(el.getAttribute('data-idx'), 10);
+              const id = currentData[idx]?.id; if (id) window.location.href = `/santri/${id}`;
+            });
+          });
+        } catch (e) { console.error('santri suggest error', e); }
+      }
+      const onInput = debounce(() => fetchSuggest(input.value.trim()), 250);
+      input.addEventListener('input', onInput);
+      input.addEventListener('keydown', (e) => {
+        const cards = box.querySelectorAll('.suggest-card');
+        if (!cards.length || box.style.display==='none') return;
+        if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, cards.length - 1); }
+        else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
+        else if (e.key === 'Enter') {
+          if (selectedIdx >= 0) {
+            e.preventDefault(); const id = currentData[selectedIdx]?.id; if (id) window.location.href = `/santri/${id}`;
+          }
+        } else if (e.key === 'Escape') { box.style.display='none'; }
+        cards.forEach((c, i) => { c.classList.toggle('selected', i === selectedIdx); });
+      });
+    })();
+  </script>
+</section>

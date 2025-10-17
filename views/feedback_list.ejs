@@ -1,0 +1,45 @@
+<section class="card">
+  <h2>Arsip Masukan</h2>
+  <p class="muted">Masukan dari halaman login.
+    <% if (user && user.role === 'admin') { %>
+      Admin dapat menghapus item yang tidak relevan.
+    <% } else { %>
+      Kasir hanya dapat melihat arsip.
+    <% } %>
+  </p>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Waktu</th>
+        <th>Nama</th>
+        <th>Masukan</th>
+        <th>Aksi</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% if (items && items.length) { %>
+        <% items.forEach(item => { %>
+          <tr>
+            <td><%= item.id %></td>
+            <td><%= new Date(item.created_at).toLocaleString('id-ID') %></td>
+            <td><%= item.nama || '-' %></td>
+            <td><%= item.pesan %></td>
+            <td>
+              <% if (user && user.role === 'admin') { %>
+                <form method="POST" action="/feedback/<%= item.id %>/delete" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+                  <button type="submit" class="btn-danger" onclick="return confirm('Hapus masukan ini?');">Hapus</button>
+                </form>
+              <% } else { %>
+                -
+              <% } %>
+            </td>
+          </tr>
+        <% }) %>
+      <% } else { %>
+        <tr><td colspan="5" class="text-center">Tidak ada masukan.</td></tr>
+      <% } %>
+    </tbody>
+  </table>
+</section>

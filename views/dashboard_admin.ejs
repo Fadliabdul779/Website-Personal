@@ -1,0 +1,150 @@
+<section class="card narrow">
+  <div class="stat-cards">
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-title">Total Saldo Tabungan</span></div>
+      <div class="value">Rp <%= (totalSaldo||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-title">Jumlah Santri</span></div>
+      <div class="value"><%= santriCount %></div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-top"><span class="stat-title">Jumlah Kasir</span></div>
+      <div class="value"><%= kasirCount %></div>
+    </div>
+  </div>
+</section>
+
+<section class="grid-2" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+  <div class="card">
+    <h3>Pemasukan Hari Ini</h3>
+    <div class="muted">⬆️ <%= todaySetorCount || 0 %> trx</div>
+    <div class="stat-value">Rp <%= (todaySetorTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="muted">Dari setoran kasir</div>
+    <div style="margin-top:10px;">
+      <a class="btn" href="/laporan/export/csv?start=<%= todayDate %>&end=<%= todayDate %>">Download CSV</a>
+      <a class="btn" href="/laporan/export/pdf?start=<%= todayDate %>&end=<%= todayDate %>">Download PDF</a>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Pengeluaran Hari Ini</h3>
+    <div class="muted">⬇️ <%= todayTarikCount || 0 %> trx</div>
+    <div class="stat-value">Rp <%= (todayTarikTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="muted">Penarikan santri</div>
+  </div>
+</section>
+
+<section class="grid-2" style="grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px;">
+  <div class="card">
+    <h3>Ringkasan Mingguan (7 hari terakhir)</h3>
+    <div class="muted">⬆️ <%= weekSetorCount || 0 %> setoran • ⬇️ <%= weekTarikCount || 0 %> penarikan</div>
+    <div class="stat-value">Pemasukan: Rp <%= (weekSetorTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="stat-value" style="margin-top:6px;">Pengeluaran: Rp <%= (weekTarikTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="muted">Rentang: <%= weekStart %> s.d <%= weekEnd %></div>
+    <div style="margin-top:10px;">
+      <a class="btn" href="/laporan?range=week">Lihat Detail</a>
+      <a class="btn" href="/laporan/export/csv?start=<%= weekStart %>&end=<%= weekEnd %>">Download CSV</a>
+      <a class="btn" href="/laporan/export/pdf?start=<%= weekStart %>&end=<%= weekEnd %>">Download PDF</a>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Ringkasan Bulanan</h3>
+    <div class="muted">⬆️ <%= monthSetorCount || 0 %> setoran • ⬇️ <%= monthTarikCount || 0 %> penarikan</div>
+    <div class="stat-value">Pemasukan: Rp <%= (monthSetorTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="stat-value" style="margin-top:6px;">Pengeluaran: Rp <%= (monthTarikTotal||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    <div class="muted">Rentang: <%= monthStart %> s.d <%= monthEnd %></div>
+    <div style="margin-top:10px;">
+      <a class="btn" href="/laporan?range=month">Lihat Detail</a>
+      <a class="btn" href="/laporan/export/csv?start=<%= monthStart %>&end=<%= monthEnd %>">Download CSV</a>
+      <a class="btn" href="/laporan/export/pdf?start=<%= monthStart %>&end=<%= monthEnd %>">Download PDF</a>
+    </div>
+  </div>
+</section>
+
+<section class="card">
+  <h3>Grafik Pemasukan vs Pengeluaran</h3>
+  <canvas id="adminChart" height="120"></canvas>
+  <p style="color:#6b7280;font-size:12px;">Rentang default 14 hari terakhir.</p>
+</section>
+
+<section class="card">
+  <h3>Manajemen</h3>
+  <p>
+    <a class="btn" href="/santri">Kelola Santri</a>
+    <a class="btn" href="/transaksi/presets">Kelola Preset Nominal</a>
+    <a class="btn" href="/feedback">Kelola Masukan</a>
+  </p>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  (function(){
+    function getChartColors(){
+      const css = getComputedStyle(document.documentElement);
+      return {
+        grid: (css.getPropertyValue('--chart-grid')||'#e5e7eb').trim(),
+        text: (css.getPropertyValue('--chart-text')||'#374151').trim()
+      };
+    }
+    async function loadChart(){
+      try{
+        const res = await fetch('/dashboard/api/daily?days=14');
+        const data = await res.json();
+        const ctx = document.getElementById('adminChart').getContext('2d');
+        const fmtIDR = (v)=> new Intl.NumberFormat('id-ID').format(v||0);
+        const colors = getChartColors();
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: data.labels.map(d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID')),
+            datasets: [
+              {
+                label: 'Pemasukan (Setoran)',
+                data: data.pemasukan,
+                borderColor: '#10b981',
+                backgroundColor: 'rgba(16,185,129,0.15)',
+                tension: 0.25,
+                fill: true,
+              },
+              {
+                label: 'Pengeluaran (Penarikan)',
+                data: data.pengeluaran,
+                borderColor: '#ef4444',
+                backgroundColor: 'rgba(239,68,68,0.15)',
+                tension: 0.25,
+                fill: true,
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            interaction: { mode: 'index', intersect: false },
+            plugins: {
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.dataset.label}: Rp ${fmtIDR(ctx.parsed.y)}`
+                }
+              },
+              legend: { display: true, labels: { color: colors.text } }
+            },
+            scales: {
+              x: { ticks: { color: colors.text }, grid: { color: colors.grid } },
+              y: { ticks: { color: colors.text, callback: (v) => `Rp ${fmtIDR(v)}` }, grid: { color: colors.grid } }
+            }
+          }
+        });
+        window.adminChart = chart;
+        document.addEventListener('themechange', function(){
+          const c = getChartColors();
+          chart.options.scales.x.ticks.color = c.text;
+          chart.options.scales.x.grid.color = c.grid;
+          chart.options.scales.y.ticks.color = c.text;
+          chart.options.scales.y.grid.color = c.grid;
+          chart.options.plugins.legend.labels.color = c.text;
+          chart.update();
+        });
+      }catch(e){ console.error('chart load error', e); }
+    }
+    loadChart();
+  })();
+</script>

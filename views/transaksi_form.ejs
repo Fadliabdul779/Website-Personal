@@ -1,0 +1,221 @@
+<section class="card">
+  <h2><%= tipe === 'setor' ? 'Transaksi Setoran' : 'Transaksi Penarikan' %></h2>
+
+  <% if (!santri) { %>
+    <form method="POST" action="/transaksi/cari" class="form-inline">
+      <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+      <input type="hidden" name="tipe" value="<%= tipe %>" />
+      <label>Cari Nama
+        <input type="text" id="inputNama" name="nama" placeholder="Masukkan nama santri" autocomplete="off" list="namaList" required />
+      </label>
+      <button type="submit" class="btn-primary">Cari</button>
+      <datalist id="namaList"></datalist>
+    </form>
+
+    <% if (typeof santriList !== 'undefined' && santriList && santriList.length) { %>
+      <div class="card" style="margin-top:12px;">
+        <h3>Hasil Pencarian</h3>
+        <table class="table">
+          <thead>
+            <tr>
+              <th>NIS</th>
+              <th>Nama</th>
+              <th>Kelas</th>
+              <th>Kelompok</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% santriList.forEach(s => { %>
+              <tr>
+                <td><%= s.nis %></td>
+                <td><%= s.nama %></td>
+                <td><%= s.kelas || '-' %></td>
+                <td><%= s.kelompok || '-' %></td>
+                <td>
+                  <% if (tipe === 'setor') { %>
+                    <a class="btn" href="/transaksi/setor?santri_id=<%= s.id %>">Pilih</a>
+                  <% } else { %>
+                    <a class="btn" href="/transaksi/tarik?santri_id=<%= s.id %>">Pilih</a>
+                  <% } %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+    <style>
+      /* gaya kartu saran cepat */
+      .suggest-grid { display: grid; grid-template-columns: repeat(auto-fill,minmax(260px,1fr)); gap: 8px; }
+      .suggest-card { border: 1px solid #e6e6e6; border-radius: 8px; padding: 10px; display:flex; align-items: center; gap: 10px; background:#fff; }
+      .suggest-card.selected { outline: 2px solid #1e88e5; }
+      .suggest-avatar { width:42px; height:42px; border-radius:50%; object-fit: cover; border:1px solid #eee; background:#f7f7f7; }
+      .suggest-title { font-weight: 600; }
+      .suggest-meta { font-size: 12px; color: #555; }
+      .suggest-actions { margin-left:auto; }
+      .suggest-actions .btn { padding: 6px 10px; }
+      .highlight { background: #ffec99; }
+    </style>
+    <div id="autoSuggest" class="card" style="margin-top:8px; display:none;"></div>
+
+    <script>
+      (function(){
+        const input = document.getElementById('inputNama');
+        const tipe = '<%= tipe %>';
+        const dl = document.getElementById('namaList');
+        const box = document.getElementById('autoSuggest');
+
+        function debounce(fn, ms){ let t; return function(){ clearTimeout(t); const args = arguments; t=setTimeout(()=>fn.apply(this, args), ms); }; }
+        function escapeHtml(s){return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c]));}
+        function highlight(text, q){
+          if (!q) return escapeHtml(text);
+          try {
+            const re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+            const idx = text.search(re);
+            if (idx === -1) return escapeHtml(text);
+            const start = escapeHtml(text.slice(0, idx));
+            const match = escapeHtml(text.slice(idx, idx + q.length));
+            const end = escapeHtml(text.slice(idx + q.length));
+            return `${start}<span class="highlight">${match}</span>${end}`;
+          } catch { return escapeHtml(text); }
+        }
+        let selectedIdx = -1; let currentData = [];
+        async function fetchSuggest(q){
+          try {
+            const params = (q && q.length >= 2)
+              ? ('?q=' + encodeURIComponent(q) + '&limit=20')
+              : ('?limit=12');
+            const res = await fetch('/transaksi/search' + params);
+            const data = await res.json();
+            currentData = data;
+            selectedIdx = -1;
+            dl.innerHTML = data.map(d => `<option value="${d.nama}"></option>`).join('');
+            if (!data.length) { box.style.display='none'; box.innerHTML=''; return; }
+            function initials(name){
+              const parts = String(name||'').trim().split(/\s+/);
+              if (!parts.length) return '?';
+              if (parts.length === 1) return parts[0].slice(0,2).toUpperCase();
+              return (parts[0][0] + parts[parts.length-1][0]).toUpperCase();
+            }
+            const cards = data.map((d, i) => {
+              const hasFoto = !!d.foto_path;
+              const namaHtml = highlight(d.nama, q);
+              const meta = `${d.nis} • ${d.kelas || '-'} • ${d.kelompok || '-'}`;
+              const avatar = hasFoto
+                ? `<img class="suggest-avatar" src="/public/${d.foto_path}" alt="foto" onerror="this.style.display='none'" />`
+                : `<div class="initial-avatar">${initials(d.nama)}</div>`;
+              return `
+                <div class="suggest-card" data-idx="${i}">
+                  ${avatar}
+                  <div>
+                    <div class="suggest-title">${namaHtml}</div>
+                    <div class="suggest-meta">${escapeHtml(meta)}</div>
+                  </div>
+                  <div class="suggest-actions">
+                    <a class="btn" href="/transaksi/${tipe}?santri_id=${d.id}">Pilih</a>
+                  </div>
+                </div>
+              `;
+            }).join('');
+            const header = (q && q.length >= 2) ? 'Hasil Cepat' : 'Daftar Santri';
+            box.innerHTML = `
+              <h3>${header}</h3>
+              <div class="suggest-grid">${cards}</div>
+            `;
+            box.style.display = 'block';
+            // klik kartu untuk pilih
+            box.querySelectorAll('.suggest-card').forEach((el) => {
+              el.addEventListener('click', () => {
+                const idx = parseInt(el.getAttribute('data-idx'), 10);
+                const id = currentData[idx]?.id;
+                if (id) window.location.href = `/transaksi/${tipe}?santri_id=${id}`;
+              });
+            });
+          } catch (e) {
+            console.error('suggest error', e);
+          }
+        }
+        const onInput = debounce(() => fetchSuggest(input.value.trim()), 200);
+        input.addEventListener('input', onInput);
+        // tampilkan daftar santri default saat halaman dibuka
+        fetchSuggest('');
+        input.addEventListener('keydown', (e) => {
+          const cards = box.querySelectorAll('.suggest-card');
+          if (!cards.length || box.style.display==='none') return;
+          if (e.key === 'ArrowDown') { e.preventDefault(); selectedIdx = Math.min(selectedIdx + 1, cards.length - 1); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); selectedIdx = Math.max(selectedIdx - 1, 0); }
+          else if (e.key === 'Enter') {
+            if (selectedIdx >= 0) {
+              e.preventDefault();
+              const id = currentData[selectedIdx]?.id;
+              if (id) window.location.href = `/transaksi/${tipe}?santri_id=${id}`;
+            }
+          } else if (e.key === 'Escape') { box.style.display='none'; }
+          cards.forEach((c, i) => { c.classList.toggle('selected', i === selectedIdx); });
+        });
+      })();
+    </script>
+  <% } else { %>
+    <div class="card info">
+      <div><strong>NIS:</strong> <%= santri.nis %></div>
+      <div><strong>Nama:</strong> <%= santri.nama %></div>
+      <div><strong>Kelas:</strong> <%= santri.kelas || '-' %></div>
+      <div><strong>Saldo Saat Ini:</strong> Rp <%= (santri.saldo||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.') %></div>
+    </div>
+
+    <% if (tipe === 'setor') { %>
+      <form method="POST" action="/transaksi/setor" class="form-grid">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="hidden" name="santri_id" value="<%= santri.id %>" />
+        <label>Jumlah Setoran
+          <% if (Array.isArray(presets) && presets.length) { %>
+            <select name="jumlah" required>
+              <% presets.forEach(function(p){ %>
+                <option value="<%= p.amount %>"><%= p.label || ('Rp ' + String(p.amount||0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')) %></option>
+              <% }) %>
+            </select>
+            <div class="muted">Nominal dikelola admin melalui menu Presets.</div>
+          <% } else { %>
+            <div class="muted">Belum ada preset. Hubungi admin untuk menambah nominal.</div>
+            <input type="number" name="jumlah" min="1" required disabled />
+          <% } %>
+        </label>
+        <label>Keterangan
+          <input type="text" name="keterangan" />
+        </label>
+        <button type="submit" class="btn-primary">Simpan Setoran</button>
+      </form>
+    <% } else { %>
+      <form method="POST" action="/transaksi/tarik" class="form-grid" id="formTarik">
+        <input type="hidden" name="_csrf" value="<%= csrfToken %>" />
+        <input type="hidden" name="santri_id" value="<%= santri.id %>" />
+        <label>Jumlah Penarikan
+          <% if (Array.isArray(presets) && presets.length) { %>
+            <select name="jumlah" required>
+              <% presets.forEach(function(p){ %>
+                <option value="<%= p.amount %>"><%= p.label || ('Rp ' + String(p.amount||0).replace(/\B(?=(\d{3})+(?!\d))/g, '.')) %></option>
+              <% }) %>
+            </select>
+            <div class="muted">Nominal dikelola admin melalui menu Presets.</div>
+          <% } else { %>
+            <div class="muted">Belum ada preset. Hubungi admin untuk menambah nominal.</div>
+            <input type="number" name="jumlah" min="1" required disabled />
+          <% } %>
+        </label>
+        <label>Keterangan
+          <input type="text" name="keterangan" />
+        </label>
+        <label>Nama Penerima (opsional)
+          <input type="text" name="nama_penerima" placeholder="Default: nama santri" />
+        </label>
+
+        <p class="hint">Bukti penarikan berupa PDF dan dapat dicetak. Tanda tangan dilakukan setelah dokumen dicetak.</p>
+
+        <button type="submit" class="btn-primary">Selesaikan Penarikan</button>
+      </form>
+      
+    <% } %>
+    <!-- Tidak perlu skrip chip preset; dropdown mengambil nominal dari admin -->
+  <% } %>
+</section>
